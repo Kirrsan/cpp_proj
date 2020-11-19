@@ -18,6 +18,9 @@ class Acpp_projCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
+
+
 public:
 	Acpp_projCharacter();
 
@@ -28,6 +31,19 @@ public:
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickUP)
+		float LineTraceDistance = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickUP)
+		USceneComponent* HeldObjectsPositionActor;
+
+private:
+	
+	UPrimitiveComponent* currentObjectHeld;
+	bool isInteracting = false;
+	bool isHoldingObject = false;
+
 
 protected:
 
@@ -58,6 +74,23 @@ protected:
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
+	/** Handler for when uncrouch input begins. */
+	void Crouching();
+
+	/** Handler for when crouch input stops. */
+	void UnCrouching();
+
+	/** Handler for when interact input begins. */
+	void Interact();
+
+	/** Handler for when interact input stops. */
+	void UnInteract();
+
+	virtual void Tick( float DeltaSeconds ) override;
+
+	void LineTracePickUp();
+	void LineTraceDrop();
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -68,5 +101,12 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	UFUNCTION()
+		void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+		void OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	void Destroy();
 };
 

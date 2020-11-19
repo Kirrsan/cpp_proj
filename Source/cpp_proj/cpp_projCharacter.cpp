@@ -1,5 +1,5 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
-
+#include "DrawDebugHelpers.h"
 #include "cpp_projCharacter.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "Camera/CameraComponent.h"
@@ -8,7 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
-
+#include "cpp_projGameMode.h"
 //////////////////////////////////////////////////////////////////////////
 // Acpp_projCharacter
 
@@ -16,6 +16,9 @@ Acpp_projCharacter::Acpp_projCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+	// declare overlap events
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &Acpp_projCharacter::OnBeginOverlap);
+	GetCapsuleComponent()->OnComponentEndOverlap.AddDynamic(this, &Acpp_projCharacter::OnEndOverlap);
 
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
@@ -28,6 +31,7 @@ Acpp_projCharacter::Acpp_projCharacter()
 
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f); // ...at this rotation rate
 	GetCharacterMovement()->JumpZVelocity = 600.f;
 	GetCharacterMovement()->AirControl = 0.2f;
@@ -43,9 +47,82 @@ Acpp_projCharacter::Acpp_projCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
+
+//////////////////////////////////////////////////////////////////////////
+// Tick
+
+
+
+void Acpp_projCharacter::Tick(float DeltaSeconds)
+{
+	if (isInteracting)
+	{
+		LineTracePickUp();
+	}
+	else
+	{
+		LineTraceDrop();
+	}
+	
+}
+
+void Acpp_projCharacter::LineTracePickUp()
+{
+	FVector lastPosition = GetCharacterMovement()->GetLastUpdateLocation();
+
+	FVector worldPosition = HeldObjectsPositionActor->GetComponentLocation();
+	FVector forwardVector = HeldObjectsPositionActor->GetForwardVector();
+
+	FVector endVector = forwardVector * LineTraceDistance + worldPosition;
+
+	if (!isHoldingObject)
+	{
+		const FName TraceTag("MyTraceTag");
+		GetWorld()->DebugDrawTraceTag = TraceTag;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.TraceTag = TraceTag;
+
+
+		FHitResult ObjectHitByLineTrace;
+
+
+		bool hasHitSomething = GetWorld()->LineTraceSingleByChannel(ObjectHitByLineTrace, lastPosition, endVector, ECollisionChannel::ECC_Visibility, TraceTag);
+
+
+		if (hasHitSomething && ObjectHitByLineTrace.GetComponent()->Mobility == EComponentMobility::Movable)
+		{
+			currentObjectHeld = ObjectHitByLineTrace.GetComponent();
+			currentObjectHeld->SetSimulatePhysics(false);
+			AActor* objectHeldOwner = currentObjectHeld->GetOwner();
+			objectHeldOwner->AttachToComponent(HeldObjectsPositionActor, FAttachmentTransformRules::SnapToTargetIncludingScale);
+			isHoldingObject = true;
+		}
+	}
+	else
+	{
+		AActor* objectHeldOwner = currentObjectHeld->GetOwner();
+		objectHeldOwner->AttachToComponent(HeldObjectsPositionActor, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	}
+
+}
+
+void Acpp_projCharacter::LineTraceDrop()
+{
+	if (IsValid(currentObjectHeld))
+	{
+		currentObjectHeld->SetSimulatePhysics(true);
+		AActor* objectHeldOwner = currentObjectHeld->GetOwner();
+		objectHeldOwner->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		currentObjectHeld = nullptr;
+		isHoldingObject = false;
+	}
+}
+
+
 
 //////////////////////////////////////////////////////////////////////////
 // Input
@@ -56,6 +133,13 @@ void Acpp_projCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 	check(PlayerInputComponent);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &Acpp_projCharacter::Crouching);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &Acpp_projCharacter::UnCrouching);
+
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &Acpp_projCharacter::Interact);
+	PlayerInputComponent->BindAction("Interact", IE_Released, this, &Acpp_projCharacter::UnInteract);
+
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &Acpp_projCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &Acpp_projCharacter::MoveRight);
@@ -84,13 +168,36 @@ void Acpp_projCharacter::OnResetVR()
 
 void Acpp_projCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
-		Jump();
+	Jump();
 }
+
+
 
 void Acpp_projCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
-		StopJumping();
+	StopJumping();
 }
+
+void Acpp_projCharacter::Crouching()
+{
+	Crouch();
+}
+
+void Acpp_projCharacter::UnCrouching()
+{
+	UnCrouch();
+}
+
+void Acpp_projCharacter::Interact()
+{
+	isInteracting = true;
+}
+
+void Acpp_projCharacter::UnInteract()
+{
+	isInteracting = false;
+}
+
 
 void Acpp_projCharacter::TurnAtRate(float Rate)
 {
@@ -132,3 +239,27 @@ void Acpp_projCharacter::MoveRight(float Value)
 		AddMovementInput(Direction, Value);
 	}
 }
+
+
+
+void Acpp_projCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("OVERLAP")));
+	if (OtherActor->ActorHasTag("Lava"))
+	{
+		Acpp_projGameMode* gameMode = (Acpp_projGameMode*)GetWorld()->GetAuthGameMode();
+		gameMode->RespawnPlayer();
+	}
+}
+
+void Acpp_projCharacter::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+
+}
+
+void Acpp_projCharacter::Destroy()
+{
+	Super::Destroyed();
+}
+
+
