@@ -47,6 +47,9 @@ Acpp_projCharacter::Acpp_projCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	FStringAssetReference itemRef = "Blueprint'/Game/ThirdPersonCPP/Blueprints/BulletActor1_Blueprint.BulletActor1_Blueprint'";
+	UObject* itemObj = itemRef.ResolveObject();
+	ActorToSpawn = Cast<UBlueprint>(itemObj);
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
@@ -66,6 +69,20 @@ void Acpp_projCharacter::Tick(float DeltaSeconds)
 	else
 	{
 		LineTraceDrop();
+	}
+
+	if (isShooting && !hasShot)
+	{
+		Shoot();
+	}
+	else if (hasShot)
+	{
+		FireRateTimer += DeltaSeconds;
+		if (FireRateTimer >= FireRate)
+		{
+			FireRateTimer = 0;
+			hasShot = false;
+		}
 	}
 	
 }
@@ -122,6 +139,26 @@ void Acpp_projCharacter::LineTraceDrop()
 	}
 }
 
+void Acpp_projCharacter::Shoot()
+{
+	const FVector respawnLocation = ShootPositionActor->GetComponentLocation();
+	const FRotator respawnRotation = ShootPositionActor->GetComponentRotation();
+	const FActorSpawnParameters spawnParameters;
+
+	AActor* bullet = GetWorld()->SpawnActor<AActor>(ActorToSpawn->GeneratedClass, respawnLocation, respawnRotation, spawnParameters);
+	hasShot = true;
+}
+
+void Acpp_projCharacter::StopShooting()
+{
+	isShooting = false;
+}
+
+void Acpp_projCharacter::Shooting()
+{
+	isShooting = true;
+}
+
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -139,6 +176,9 @@ void Acpp_projCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &Acpp_projCharacter::Interact);
 	PlayerInputComponent->BindAction("Interact", IE_Released, this, &Acpp_projCharacter::UnInteract);
+
+	PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &Acpp_projCharacter::Shooting);
+	PlayerInputComponent->BindAction("Shoot", IE_Released, this, &Acpp_projCharacter::StopShooting);
 
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &Acpp_projCharacter::MoveForward);

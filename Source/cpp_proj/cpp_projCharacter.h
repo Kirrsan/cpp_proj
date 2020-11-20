@@ -38,12 +38,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickUP)
 		USceneComponent* HeldObjectsPositionActor;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+		USceneComponent* ShootPositionActor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Shoot)
+		UBlueprint* ActorToSpawn;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+		float FireRate;
+
 private:
 	
 	UPrimitiveComponent* currentObjectHeld;
 	bool isInteracting = false;
 	bool isHoldingObject = false;
-
+	bool isShooting = false;
+	bool hasShot = false;
+	float FireRateTimer = 0;
 
 protected:
 
@@ -90,6 +101,11 @@ protected:
 
 	void LineTracePickUp();
 	void LineTraceDrop();
+
+	void Shoot();
+	void StopShooting();
+	void Shooting();
+
 
 protected:
 	// APawn interface
