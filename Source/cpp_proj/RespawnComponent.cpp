@@ -21,6 +21,8 @@ void URespawnComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// ...
+
+	//get the GameMode objec tin the current scene, call the Respawn method with the owner of this script as reference
 	AGameModeBase* GM = GetWorld()->GetAuthGameMode();
 	Acpp_projGameMode* GameMode = Cast<Acpp_projGameMode>(GM);
 	GameMode->SetRespawnPoint(this->GetOwner());

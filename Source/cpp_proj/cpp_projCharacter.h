@@ -32,28 +32,38 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+
+	//pickUp
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickUP)
 		float LineTraceDistance = 5.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickUP)
 		USceneComponent* HeldObjectsPositionActor;
 
+
+	//Shoot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
 		USceneComponent* ShootPositionActor;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Shoot)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
 		UBlueprint* ActorToSpawn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
 		float FireRate;
 
 private:
-	
+	//object held after pick Up
 	UPrimitiveComponent* currentObjectHeld;
+
+	//are we casting a linetrace
 	bool isInteracting = false;
+	//are we holding an object
 	bool isHoldingObject = false;
+	//are we shooting
 	bool isShooting = false;
+	//did a shot get fired
 	bool hasShot = false;
+	//time between 2 shots
 	float FireRateTimer = 0;
 
 protected:

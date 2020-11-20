@@ -47,6 +47,7 @@ Acpp_projCharacter::Acpp_projCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	//get the path to the bullets blueprint in the project
 	FStringAssetReference itemRef = "Blueprint'/Game/ThirdPersonCPP/Blueprints/BulletActor1_Blueprint.BulletActor1_Blueprint'";
 	UObject* itemObj = itemRef.ResolveObject();
 	ActorToSpawn = Cast<UBlueprint>(itemObj);
@@ -62,21 +63,25 @@ Acpp_projCharacter::Acpp_projCharacter()
 
 void Acpp_projCharacter::Tick(float DeltaSeconds)
 {
+	//if linetrace can be casted
 	if (isInteracting)
 	{
 		LineTracePickUp();
 	}
 	else
 	{
+		//if linetrace needs to stop and we have an object held
 		LineTraceDrop();
 	}
 
 	if (isShooting && !hasShot)
 	{
+		//if we want to shoot and the fireRate timer is done
 		Shoot();
 	}
 	else if (hasShot)
 	{
+		//fire rate timer
 		FireRateTimer += DeltaSeconds;
 		if (FireRateTimer >= FireRate)
 		{
@@ -89,29 +94,32 @@ void Acpp_projCharacter::Tick(float DeltaSeconds)
 
 void Acpp_projCharacter::LineTracePickUp()
 {
+	//move linetrace with player
 	FVector lastPosition = GetCharacterMovement()->GetLastUpdateLocation();
 
+	//get linetrace direction
 	FVector worldPosition = HeldObjectsPositionActor->GetComponentLocation();
 	FVector forwardVector = HeldObjectsPositionActor->GetForwardVector();
 
 	FVector endVector = forwardVector * LineTraceDistance + worldPosition;
 
+	//if we're not holding an object, do a linetrace
 	if (!isHoldingObject)
 	{
+		//lineTrace debug
 		const FName TraceTag("MyTraceTag");
 		GetWorld()->DebugDrawTraceTag = TraceTag;
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.TraceTag = TraceTag;
 
-
+		//linetrace
 		FHitResult ObjectHitByLineTrace;
-
-
 		bool hasHitSomething = GetWorld()->LineTraceSingleByChannel(ObjectHitByLineTrace, lastPosition, endVector, ECollisionChannel::ECC_Visibility, TraceTag);
 
-
+		//if hit actor can be picked up
 		if (hasHitSomething && ObjectHitByLineTrace.GetComponent()->Mobility == EComponentMobility::Movable)
 		{
+			//pick up object and stop the raycast
 			currentObjectHeld = ObjectHitByLineTrace.GetComponent();
 			currentObjectHeld->SetSimulatePhysics(false);
 			AActor* objectHeldOwner = currentObjectHeld->GetOwner();
@@ -121,6 +129,7 @@ void Acpp_projCharacter::LineTracePickUp()
 	}
 	else
 	{
+		//refresh object held position without casting linetrace
 		AActor* objectHeldOwner = currentObjectHeld->GetOwner();
 		objectHeldOwner->AttachToComponent(HeldObjectsPositionActor, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	}
@@ -129,6 +138,7 @@ void Acpp_projCharacter::LineTracePickUp()
 
 void Acpp_projCharacter::LineTraceDrop()
 {
+	//drop object held
 	if (IsValid(currentObjectHeld))
 	{
 		currentObjectHeld->SetSimulatePhysics(true);
@@ -141,6 +151,7 @@ void Acpp_projCharacter::LineTraceDrop()
 
 void Acpp_projCharacter::Shoot()
 {
+	//spawn bullet
 	const FVector respawnLocation = ShootPositionActor->GetComponentLocation();
 	const FRotator respawnRotation = ShootPositionActor->GetComponentRotation();
 	const FActorSpawnParameters spawnParameters;
@@ -171,12 +182,15 @@ void Acpp_projCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
+	//binded to "left control"
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &Acpp_projCharacter::Crouching);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &Acpp_projCharacter::UnCrouching);
 
+	//binded to "E"
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &Acpp_projCharacter::Interact);
 	PlayerInputComponent->BindAction("Interact", IE_Released, this, &Acpp_projCharacter::UnInteract);
 
+	//binded to left mouse button
 	PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &Acpp_projCharacter::Shooting);
 	PlayerInputComponent->BindAction("Shoot", IE_Released, this, &Acpp_projCharacter::StopShooting);
 
@@ -220,21 +234,25 @@ void Acpp_projCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Loc
 
 void Acpp_projCharacter::Crouching()
 {
+	//end crouch
 	Crouch();
 }
 
 void Acpp_projCharacter::UnCrouching()
 {
+	//start crouch
 	UnCrouch();
 }
 
 void Acpp_projCharacter::Interact()
 {
+	//start raycast to pick up objects
 	isInteracting = true;
 }
 
 void Acpp_projCharacter::UnInteract()
 {
+	//end raycast
 	isInteracting = false;
 }
 
@@ -284,6 +302,7 @@ void Acpp_projCharacter::MoveRight(float Value)
 
 void Acpp_projCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	//respawn if hit by lava
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("OVERLAP")));
 	if (OtherActor->ActorHasTag("Lava"))
 	{

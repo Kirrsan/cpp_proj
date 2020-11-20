@@ -16,12 +16,15 @@ public:
 	void RespawnPlayer();
 	void SetRespawnPoint(AActor* respawnPoint);
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	//respawn AActor in the map, assigned via the method SetRespawnPoint() and a script on the respawn AActor.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Respawn)
 		AActor* respawnPosition;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	//Player AActor to spawn
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Respawn)
 		UBlueprint* ActorToSpawn;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	//particles AActor to spawn
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Respawn)
 		AActor* ParticlesToSpawn;
 private : 
 
