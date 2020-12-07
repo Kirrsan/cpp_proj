@@ -3,6 +3,7 @@
 #include "LevelStreamerActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
+#include "cpp_projCharacter.h"
 // Sets default values
 ALevelStreamerActor::ALevelStreamerActor()
 {
@@ -33,7 +34,7 @@ void ALevelStreamerActor::Tick(float DeltaTime)
 void ALevelStreamerActor::OverlapBegins(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	ACharacter* MyCharacter = UGameplayStatics::GetPlayerCharacter(this, 0);
-	ACharacter* other = Cast<ACharacter>(OtherActor);
+	Acpp_projCharacter* other = Cast<Acpp_projCharacter>(OtherActor);
 	if (other != nullptr && LevelToLoad != "")
 	{
 		FLatentActionInfo LatentInfo;
@@ -44,7 +45,7 @@ void ALevelStreamerActor::OverlapBegins(UPrimitiveComponent* OverlappedComponent
 void ALevelStreamerActor::OverlapEnds(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	ACharacter* MyCharacter = UGameplayStatics::GetPlayerCharacter(this, 0);
-	ACharacter* other = Cast<ACharacter>(OtherActor);
+	Acpp_projCharacter* other = Cast<Acpp_projCharacter>(OtherActor);
 	if (other != nullptr && LevelToLoad != "")
 	{
 		FLatentActionInfo LatentInfo;
