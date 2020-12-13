@@ -9,6 +9,9 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "cpp_projGameMode.h"
+#include "MySaveInstance.h"
+#include "Kismet/GameplayStatics.h"
+
 //////////////////////////////////////////////////////////////////////////
 // Acpp_projCharacter
 
@@ -36,6 +39,7 @@ Acpp_projCharacter::Acpp_projCharacter()
 	GetCharacterMovement()->JumpZVelocity = 600.f;
 	GetCharacterMovement()->AirControl = 0.2f;
 
+
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -55,6 +59,23 @@ Acpp_projCharacter::Acpp_projCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
+
+
+// Called when the game starts or when spawned
+void Acpp_projCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	UMySaveInstance* gameInstance = Cast<UMySaveInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+	if (gameInstance != nullptr) {
+		health = gameInstance->playerMaxHealth;
+		if (gameInstance->isGameLoaded) {
+			health = gameInstance->playerHealth;
+			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health player : %d"), health));
+			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health save : %d"), gameInstance->playerHealth));
+		}
+	}
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 // Tick
@@ -95,11 +116,13 @@ void Acpp_projCharacter::Tick(float DeltaSeconds)
 void Acpp_projCharacter::LineTracePickUp()
 {
 	//move linetrace with player
-	FVector lastPosition = GetCharacterMovement()->GetLastUpdateLocation();
+
 
 	//get linetrace direction
 	FVector worldPosition = HeldObjectsPositionActor->GetComponentLocation();
 	FVector forwardVector = HeldObjectsPositionActor->GetForwardVector();
+
+	FVector lastPosition = GetCharacterMovement()->GetLastUpdateLocation() * forwardVector * 0.1f + worldPosition;
 
 	FVector endVector = forwardVector * LineTraceDistance + worldPosition;
 
@@ -117,7 +140,7 @@ void Acpp_projCharacter::LineTracePickUp()
 		bool hasHitSomething = GetWorld()->LineTraceSingleByChannel(ObjectHitByLineTrace, lastPosition, endVector, ECollisionChannel::ECC_Visibility, TraceTag);
 
 		//if hit actor can be picked up
-		if (hasHitSomething && ObjectHitByLineTrace.GetComponent()->Mobility == EComponentMobility::Movable)
+		if (hasHitSomething && ObjectHitByLineTrace.GetComponent()->Mobility == EComponentMobility::Movable && ObjectHitByLineTrace.GetActor()->ActorHasTag("Holdable"))
 		{
 			//pick up object and stop the raycast
 			currentObjectHeld = ObjectHitByLineTrace.GetComponent();
@@ -194,6 +217,10 @@ void Acpp_projCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 	PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &Acpp_projCharacter::Shooting);
 	PlayerInputComponent->BindAction("Shoot", IE_Released, this, &Acpp_projCharacter::StopShooting);
 
+	//binded to shiftAcpp_projCharacter
+	PlayerInputComponent->BindAction("Strafing", IE_Pressed, this, &Acpp_projCharacter::ActivateStrafe);
+	PlayerInputComponent->BindAction("Strafing", IE_Released, this, &Acpp_projCharacter::DeactivateSrafe);
+
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &Acpp_projCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &Acpp_projCharacter::MoveRight);
@@ -212,6 +239,55 @@ void Acpp_projCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &Acpp_projCharacter::OnResetVR);
+}
+
+void Acpp_projCharacter::ActivateStrafe()
+{
+	isStrafing = true;
+	GetCharacterMovement()->bUseControllerDesiredRotation = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+}
+
+void Acpp_projCharacter::DeactivateSrafe()
+{
+	isStrafing = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+}
+
+void Acpp_projCharacter::MoveForward(float Value)
+{
+	if ((Controller != NULL) && (Value != 0.0f))
+	{
+		//directionValue & isGoingSide are use for animation transition
+		directionValue = Value;
+		isGoingSide = false;
+
+		// find out which way is forward
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+		// get forward vector
+		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		AddMovementInput(Direction, Value);
+	}
+}
+
+void Acpp_projCharacter::MoveRight(float Value)
+{
+	if ((Controller != NULL) && (Value != 0.0f))
+	{
+		directionValue = Value;
+		isGoingSide = true;
+
+		// find out which way is right
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+		// get right vector 
+		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		// add movement in that direction
+		AddMovementInput(Direction, Value);
+	}
 }
 
 
@@ -269,37 +345,6 @@ void Acpp_projCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-void Acpp_projCharacter::MoveForward(float Value)
-{
-	if ((Controller != NULL) && (Value != 0.0f))
-	{
-		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Value);
-	}
-}
-
-void Acpp_projCharacter::MoveRight(float Value)
-{
-	if ( (Controller != NULL) && (Value != 0.0f) )
-	{
-		// find out which way is right
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-	
-		// get right vector 
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		// add movement in that direction
-		AddMovementInput(Direction, Value);
-	}
-}
-
-
-
 void Acpp_projCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	//respawn if hit by lava
@@ -315,6 +360,51 @@ void Acpp_projCharacter::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActo
 {
 
 }
+
+void Acpp_projCharacter::AddItem(FItemStructure itemToAdd)
+{
+	int index = 0;
+	if (inventory.Find(itemToAdd, index))
+	{
+		inventoryTracking[index] += 1;
+	}
+	else {
+		inventory.Add(itemToAdd);
+		inventoryTracking.Add(itemToAdd.numberItemsInItem);
+	}
+}
+
+void Acpp_projCharacter::SellItem(int itemToSellIndex)
+{
+	money += inventory[itemToSellIndex].itemValue;
+	RemoveItemFromInventory(itemToSellIndex);
+}
+
+void Acpp_projCharacter::UseItem(int itemToUseIndex)
+{
+
+	/*UMyGameInstance* gameInstance = Cast<UMyGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	health += inventory[itemToUseIndex].impactOnPlayerLife;
+	if (gameInstance != nullptr) {
+		if (health > gameInstance->playerMaxHealth) {
+			health = gameInstance->playerMaxHealth;
+		}
+	}*/
+	RemoveItemFromInventory(itemToUseIndex);
+}
+
+void Acpp_projCharacter::RemoveItemFromInventory(int itemIndex)
+{
+	inventoryTracking[itemIndex] -= 1;
+	if (inventoryTracking[itemIndex] <= 0) {
+		//inventory.RemoveAt(itemIndex);
+		inventoryTracking.RemoveAt(itemIndex);
+	}
+	OnItemOut();
+}
+
+
 
 void Acpp_projCharacter::Destroy()
 {

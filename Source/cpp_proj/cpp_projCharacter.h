@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "InventoryItem.h"
 #include "cpp_projCharacter.generated.h"
 
 UCLASS(config=Game)
@@ -51,6 +52,40 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
 		float FireRate;
 
+	void AddItem(FItemStructure itemToAdd);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		TArray<FItemStructure> inventory;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+		TArray<int> inventoryTracking;
+
+	UFUNCTION(BlueprintCallable)
+		void SellItem(int itemToSellIndex);
+
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnItemOut();
+
+	UFUNCTION(BlueprintCallable)
+		void UseItem(int itemToUseIndex);
+
+	void RemoveItemFromInventory(int itemIndex);
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		int money = 0;
+
+	int health;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
+		bool isStrafing;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
+		bool isGoingSide;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
+		float directionValue;
+
 private:
 	//object held after pick Up
 	UPrimitiveComponent* currentObjectHeld;
@@ -66,7 +101,12 @@ private:
 	//time between 2 shots
 	float FireRateTimer = 0;
 
+
+
 protected:
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
 
 	/** Resets HMD orientation in VR. */
 	void OnResetVR();
@@ -115,6 +155,12 @@ protected:
 	void Shoot();
 	void StopShooting();
 	void Shooting();
+
+	UFUNCTION()
+		void ActivateStrafe();
+
+	UFUNCTION()
+		void DeactivateSrafe();
 
 
 protected:
