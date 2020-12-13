@@ -6,50 +6,44 @@
 #include "MySaveGame.h"
 #include "Kismet/GameplayStatics.h"
 
-void UMySaveInstance::SaveGame(int slotID)
+void UMySaveInstance::SaveGame(int ID)
 {
-    UMySaveGame* SaveInstance = Cast<UMySaveGame>(UGameplayStatics::CreateSaveGameObject(UMySaveGame::StaticClass()));
+    UMySaveGame* mySave = Cast<UMySaveGame>(UGameplayStatics::CreateSaveGameObject(UMySaveGame::StaticClass()));
 
-    if (SaveInstance == nullptr) {
-        GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Couldn't save"));
+    if (mySave == nullptr) {
+        GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Did not save"));
         return;
     }
 
 
-    AActor* Avatar = Cast<AActor>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
-    Acpp_projCharacter* player = Cast<Acpp_projCharacter>(Avatar);
+    AActor* playerActor = Cast<AActor>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+    Acpp_projCharacter* player = Cast<Acpp_projCharacter>(playerActor);
 
     if (player != nullptr) {
-        playerHealth = player->health;
+        playerPos = player->GetActorLocation();
+        health = player->health;
 
-        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health player: %lld"), player->health));
-        SaveInstance->saveHealth = playerHealth;
+        mySave->PlayerPos = playerPos;
+        mySave->HealthSaved = health;
     }
 
-    GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health instance: %lld"), playerHealth));
-    GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health save: %lld"), SaveInstance->saveHealth));
+    UGameplayStatics::SaveGameToSlot(mySave, "SaveGame" + ID, 0);
 
-    if (UGameplayStatics::SaveGameToSlot(SaveInstance, "SaveGame" + slotID, 0)) {
-        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, FString::Printf(TEXT("Game saved in slot %lld"), slotID));
+    if (UGameplayStatics::SaveGameToSlot(mySave, "SaveGame" + ID, 0)) {
     }
 
 }
 
-void UMySaveInstance::LoadGame(int slotID)
+void UMySaveInstance::LoadGame(int ID)
 {
-    UMySaveGame* SaveInstance = Cast<UMySaveGame>(UGameplayStatics::LoadGameFromSlot("SaveGame" + slotID, 0));
+    UMySaveGame* SaveGameInstance = Cast<UMySaveGame>(UGameplayStatics::CreateSaveGameObject(UMySaveGame::StaticClass()));
+    SaveGameInstance = Cast<UMySaveGame>(UGameplayStatics::LoadGameFromSlot("SaveGame" + ID, 0));
 
-    if (SaveInstance == nullptr) {
-        GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("No save available"));
+    if (SaveGameInstance == nullptr) {
         return;
     }
+    playerPos = SaveGameInstance->PlayerPos;
+    health = SaveGameInstance->HealthSaved;
 
     isGameLoaded = true;
-
-    playerHealth = SaveInstance->saveHealth;
-
-
-    GEngine->AddOnScreenDebugMessage(-10, 3.f, FColor::Yellow, FString::Printf(TEXT("Health save: %lld"), SaveInstance->saveHealth));
-    GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health instance: %d"), playerHealth));
-
 }

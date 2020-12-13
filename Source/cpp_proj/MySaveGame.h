@@ -15,5 +15,8 @@ class CPP_PROJ_API UMySaveGame : public USaveGame
 	GENERATED_BODY()
 
 public :
-		int saveHealth;
+	UMySaveGame();
+
+		FVector PlayerPos;
+		int HealthSaved;
 };

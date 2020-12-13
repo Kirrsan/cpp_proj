@@ -67,11 +67,10 @@ void Acpp_projCharacter::BeginPlay()
 	Super::BeginPlay();
 	UMySaveInstance* gameInstance = Cast<UMySaveInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
 	if (gameInstance != nullptr) {
-		health = gameInstance->playerMaxHealth;
+		health = 100;
 		if (gameInstance->isGameLoaded) {
-			health = gameInstance->playerHealth;
-			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health player : %d"), health));
-			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, FString::Printf(TEXT("Health save : %d"), gameInstance->playerHealth));
+			SetActorLocation(gameInstance->playerPos);
+			health = gameInstance->health;
 		}
 	}
 }
@@ -254,39 +253,31 @@ void Acpp_projCharacter::DeactivateSrafe()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
-void Acpp_projCharacter::MoveForward(float Value)
+void Acpp_projCharacter::MoveForward(float value)
 {
-	if ((Controller != NULL) && (Value != 0.0f))
+	if ((Controller != NULL) && (value != 0.0f))
 	{
 		//directionValue & isGoingSide are use for animation transition
-		directionValue = Value;
-		isGoingSide = false;
+		direction = value;
 
-		// find out which way is forward
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// get forward vector
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Value);
+		AddMovementInput(Direction, value);
 	}
 }
 
-void Acpp_projCharacter::MoveRight(float Value)
+void Acpp_projCharacter::MoveRight(float value)
 {
-	if ((Controller != NULL) && (Value != 0.0f))
+	if ((Controller != NULL) && (value != 0.0f))
 	{
-		directionValue = Value;
-		isGoingSide = true;
+		direction = value;
 
-		// find out which way is right
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// get right vector 
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
-		AddMovementInput(Direction, Value);
+		AddMovementInput(Direction, value);
 	}
 }
 

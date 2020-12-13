@@ -77,14 +77,12 @@ public:
 
 	int health;
 
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
+		float direction;
+
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
 		bool isStrafing;
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
-		bool isGoingSide;
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite)
-		float directionValue;
 
 private:
 	//object held after pick Up

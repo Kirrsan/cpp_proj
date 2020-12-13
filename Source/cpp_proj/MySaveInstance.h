@@ -16,18 +16,14 @@ class CPP_PROJ_API UMySaveInstance : public UGameInstance
 	
 public:
 
-
 	UFUNCTION(BlueprintCallable)
-		void SaveGame(int slotID);
-
-
+		void SaveGame(int ID);
 	UFUNCTION(BlueprintCallable)
-		void LoadGame(int slotID);
+		void LoadGame(int ID);
 
-	int playerHealth;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int playerMaxHealth = 100;
+	FVector playerPos;
+	int health;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool isGameLoaded = false;
